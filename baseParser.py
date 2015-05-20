@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 ###############################################################################
-# parses pileup base string and returns the counts for all possible alleles 
+# parses pileup base string and returns the counts for all possible alleles
 # for each position
 # reads input (mpileup output) from sys.stdin
 ###############################################################################
@@ -9,13 +9,13 @@ import os
 import sys
 
 class parseString(object):
-    
+
     def __init__(self, ref, string):
         self.ref = ref.upper()
         self.string = string.upper()
         self.types = {'A':0,'G':0,'C':0,'T':0,'-':[],'*':0,'+':[],'X':[]}
         self.process()
-        
+
     def process(self):
         # remove end of read character
         self.string = self.string.replace('$','')
@@ -28,13 +28,13 @@ class parseString(object):
                 self.types['*'] += 1
                 # skip to next character
                 self.string = self.string[1:]
-            
+
             elif self.string[0] in ['.',',']:
                 if (len(self.string)== 1) or (self.string[1] not in ['+','-']):
                     # a reference base
                     self.types[self.ref] += 1
                     self.string = self.string[1:]
-                elif self.string[1] == '+': 
+                elif self.string[1] == '+':
                     insertionLength = int(self.string[2])
                     insertionSeq = self.string[3:3+ insertionLength]
                     self.types['+'].append(insertionSeq)
@@ -44,12 +44,23 @@ class parseString(object):
                     deletionSeq = self.string[3:3+deletionLength]
                     self.types['-'].append(deletionSeq)
                     self.string = self.string[3+deletionLength:]
-                    
+
             elif self.types.has_key(self.string[0]) and\
                  ((len(self.string)==1) or (self.string[1] not in ['-','+'])):
                 # one of the four bases
-                self.types[self.string[0]] += 1
-                self.string = self.string[1:]
+                if self.string[0] in ["A","C","G","T"]:
+                    self.types[self.string[0]] += 1
+                    self.string = self.string[1:]
+                elif self.string[0] == '+':
+                    insertionLength = int(self.string[1])
+                    insertionSeq = self.string[2:2+ insertionLength]
+                    self.types['+'].append(insertionSeq)
+                    self.string = self.string[2+insertionLength:]
+                elif self.string[0] == '-':
+                    deletionLength = int(self.string[1])
+                    deletionSeq = self.string[2:2+deletionLength]
+                    self.types['-'].append(deletionSeq)
+                    self.string = self.string[2+deletionLength:]
             else:
                 # unrecognized character
                 # or a read that reports a substitition followed by an insertion/deletion
@@ -61,7 +72,7 @@ class parseString(object):
         return '\t'.join(map(str,[types['A'], types['C'], types['G'],types['T'],\
                                   types['*']]) +\
                          map(','.join, [types['-'],types['+'],types['X']]))
-        
+
 
 def main():
     print >>sys.stdout, "chrom\tpos\tref\tcov\tA\tC\tG\tT\t*\t-\t+\tX"
